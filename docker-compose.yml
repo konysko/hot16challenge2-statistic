@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:11-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    env_file:
+      - ./.env
+
+  backend:
+    stdin_open: true
+    tty: true
+    container_name: "backend"
+    build: ./hot16_statistics
+    command: python3 manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./hot16_statistics:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+#
+#  frontend:
+#    build: ./frontend
+#    command: npm run serve
+#    links:
+#      - "backend:backend"
+#    ports:
+#      - 0.0.0.0:8080:8080
+#    volumes:
+#      - ./frontend/usr/src/app/
+#      - /usr/src/app/node_modules
+#    depends_on:
+#      - db
+#      - backend
+
+volumes:
+  postgres_data:
