@@ -1,4 +1,4 @@
-from .models import Payment
+from .models import Payment, Szesnastka
 from .siepomaga import HandlerSiePomaga
 from .youtube import YoutubeHandler
 
@@ -16,4 +16,6 @@ def fetch_new_payments():
 
 
 def fetch_new_videos():
-    YoutubeHandler().run()
+    Szesnastka.objects.all().delete()
+    videos = YoutubeHandler().run()
+    Szesnastka.objects.bulk_create(videos)

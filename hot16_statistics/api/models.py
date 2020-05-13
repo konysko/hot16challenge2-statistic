@@ -3,6 +3,8 @@ import json
 from django.contrib.postgres.fields import ArrayField
 from django.db import models, connection
 
+from api.serializers import StatisticSerializer
+
 
 class Payment(models.Model):
     payment_id = models.CharField(max_length=256, unique=True)
@@ -40,7 +42,7 @@ class StatisticView(models.Model):
     video_urls = ArrayField(
         models.URLField()
     )
-    total_sum_amount = models.FloatField()
+    total_sum_amount = models.DecimalField(max_digits=10, decimal_places=2)
     hour = models.IntegerField()
     day = models.IntegerField()
     month = models.IntegerField()
@@ -97,12 +99,13 @@ class StatisticView(models.Model):
             ''')
 
     @staticmethod
-    def export_json(queryset, name=None):
+    def export_json(queryset=None, name=None):
+        if not queryset:
+            queryset = StatisticView.objects.values('date', 'video_titles', 'video_thumbnails', 'video_urls',
+                                                    'total_sum_amount')
         if not name:
-            name = '/tmp/statistic.json' # TODO change to date
+            name = '/tmp/statistic.json'
         with open(name, 'w') as handler:
-            serializer_data = [dict(obj) for obj in queryset]
+            serializer_data = StatisticSerializer(queryset, many=True).data
             json.dump(serializer_data, handler)
             return True
-
-

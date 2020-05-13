@@ -24,20 +24,6 @@ services:
       - db
     env_file:
       - ./.env
-#
-#  frontend:
-#    build: ./frontend
-#    command: npm run serve
-#    links:
-#      - "backend:backend"
-#    ports:
-#      - 0.0.0.0:8080:8080
-#    volumes:
-#      - ./frontend/usr/src/app/
-#      - /usr/src/app/node_modules
-#    depends_on:
-#      - db
-#      - backend
 
 volumes:
   postgres_data:

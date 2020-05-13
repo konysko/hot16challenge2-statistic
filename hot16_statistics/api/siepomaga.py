@@ -1,6 +1,5 @@
 import logging
 import re
-from concurrent.futures.process import ProcessPoolExecutor
 from datetime import datetime
 from typing import Tuple, List
 
@@ -55,7 +54,6 @@ class ConnectionSiePomaga:
 
 
 class HandlerSiePomaga:
-
     def __init__(self, last_payment_id: str, last_payment_date: str):
         self.handler = ConnectionSiePomaga()
         self.last_payment_id = last_payment_id
@@ -64,19 +62,23 @@ class HandlerSiePomaga:
 
     def run(self):
         payments_num = 0
+        is_last = False
         for page in self.handler.get_next_page():
             try:
                 payments, is_last = self.parse_page(page)
                 self.payments.extend(payments)
                 payments_num += len(payments)
 
+            except Exception as e:
+                logger.error(e)
+            else:
                 logger.info(f'Last payment on {payments[-1].date}')
-                logger.info(f'Got {len(self.payments)} payments')
+                logger.info(f'Got {payments_num} payments')
 
-            except Exception:
-                continue
+            if is_last:
+                return self.payments
 
-            if payments_num % 720 == 0 or is_last:
+            if payments_num % 720 == 0:
                 yield self.payments
                 self.payments = []
 
@@ -93,8 +95,10 @@ class HandlerSiePomaga:
         date = payment.find('small')['data-time']
         parsed_date = datetime.strptime(date, '%Y-%m-%dT%H:%M:%S%z')
         parsed_id = payment['id'].lstrip('payment-')
-        is_last = bool(parsed_id == self.last_payment_id and parsed_date == self.last_payment_date)
         amount = payment.find('strong').text.strip().rstrip(' zł').replace(',', '.').replace(' ', '')
+
+        is_last = bool(parsed_id == self.last_payment_id and parsed_date == self.last_payment_date)
+
         return Payment(
             payment_id=parsed_id,
             author=payment.find('h4').text.strip(),

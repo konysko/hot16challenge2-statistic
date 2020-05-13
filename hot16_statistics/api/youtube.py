@@ -4,6 +4,7 @@ from typing import List
 
 import googleapiclient.discovery
 import googleapiclient.errors
+from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
 
@@ -16,12 +17,13 @@ logger = logging.getLogger(__name__)
 class YoutubeHandler:
     api_service_name = "youtube"
     api_version = "v3"
-    key = 'AIzaSyC7u6_eTH7Bf1TdvbZrI8Mglvb2zrIdFtM'
+    key = settings.YT_API_KEY
     payload = {
-        'playlistId': 'PL5T2bKQEuT6B9QtbQMILHNEks-vRO1Pv3',
+        'playlistId': 'PLJracTP7uCLI3Lh1egh8xo6eJNwJIoIUW',
         'maxResults': 50,
         'part': 'snippet, contentDetails'
     }
+    forbidden_titles = ['Deleted video', 'Private video']
 
     def __init__(self):
         self.youtube = googleapiclient.discovery.build(
@@ -31,29 +33,35 @@ class YoutubeHandler:
     def run(self):
         request = self.youtube.list(**self.payload)
         page = request.execute()
+        parsed_videos = []
         while page:
-            self.update_videos(page['items'])
+            parsed_videos.extend(self.update_videos(page['items']))
             request = self.youtube.list_next(previous_request=request, previous_response=page)
             if not request:
                 break
             page = request.execute()
+        return parsed_videos
 
     @classmethod
     def update_videos(cls, videos: List[dict]):
         parsed_videos = []
         for video in videos:
+            if video['snippet']['title'] in cls.forbidden_titles:
+                continue
             parsed_video = cls.parse_video(video)
-            if not Szesnastka.objects.filter(video_id=parsed_video.video_id).exists():
-                parsed_videos.append(parsed_video)
+            parsed_videos.append(parsed_video)
 
-        Szesnastka.objects.bulk_create(parsed_videos)
         logger.info(f'Added {len(parsed_videos)} videos')
+        return parsed_videos
 
     @staticmethod
     def parse_video(video: dict) -> Szesnastka:
         details = video['contentDetails']
         snippet = video['snippet']
-        parsed_date = make_aware(timezone.datetime.fromisoformat(details['videoPublishedAt'][:-1]))
+        if date := details.get('videoPublishedAt', '')[:-1]:
+            parsed_date = make_aware(timezone.datetime.fromisoformat(date))
+        else:
+            parsed_date = None
         return Szesnastka(
             video_id=details['videoId'],
             published_at=parsed_date,
