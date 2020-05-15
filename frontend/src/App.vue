@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar app color="#d21919" dark>
+    <v-app-bar app color="#272727" dark>
       <v-toolbar-title>
         #hot16challenge2
       </v-toolbar-title>
