@@ -1,26 +1,12 @@
 <template>
   <div class="wrapper">
     <section class="section">
-      <h2 class="sectionTitle">Zebrana kwota i liczba filmów</h2>
-      <v-select
-        color="#272727"
-        item-color="#272727"
-        :items="ranges"
-        v-model="range"
-        @change="onChangeRange"
-        label="Zakres wykresu"
-        outlined
-      ></v-select>
-      <line-chart
-        v-if="loaded"
-        :chart-total-amount-values="chartTotalAmountValues"
-        :chart-video-count-values="chartVideoCountValues"
-        :chart-labels="dataLabels"
-      ></line-chart>
-    </section>
-    <section class="section">
-      <h2 class="sectionTitle">Zebrana kwota i poszczególne filmy</h2>
+      <div class="sectionHeader">
+        <h2 class="sectionTitle">Zebrana kwota z utworami na YouTube</h2>
+        <v-switch v-model="isDateRange" @change="onChangeIsDateRange" color="#de4000" label="Wykres dzienny"></v-switch>
+      </div>
       <v-menu
+        v-if="isDateRange"
         v-model="dateMenu"
         :close-on-content-click="false"
         :nudge-right="40"
@@ -47,20 +33,38 @@
         :chart-labels="dataLabelsOnDay"
       ></icon-chart>
     </section>
+    <section class="section">
+      <h2 class="sectionTitle">Zebrana kwota i skumulowana liczba utworów na YouTube</h2>
+      <v-select
+        color="#272727"
+        item-color="#272727"
+        :items="ranges"
+        v-model="range"
+        @change="onChangeRange"
+        label="Zakres kumulacji"
+        outlined
+      ></v-select>
+      <line-chart
+        v-if="loaded"
+        :chart-total-amount-values="chartTotalAmountValues"
+        :chart-video-count-values="chartVideoCountValues"
+        :chart-labels="dataLabels"
+      ></line-chart>
+    </section>
   </div>
 </template>
 
 <script>
 import moment from 'moment';
 
-import LineChart from '@/components/LineChart.vue';
 import IconChart from '@/components/IconChart.vue';
+import LineChart from '@/components/LineChart.vue';
 
 export default {
   name: 'Home',
   components: {
-    LineChart,
-    IconChart
+    IconChart,
+    LineChart
   },
   data() {
     return {
@@ -73,7 +77,8 @@ export default {
       loaded: false,
       ranges: ['Godzina', 'Dzień'],
       range: 'Dzień',
-      date: new Date(2019, 4, 9).toISOString().substr(0, 10),
+      isDateRange: false,
+      date: new Date(2019, 4, 2).toISOString().substr(0, 10),
       dateMenu: false
     };
   },
@@ -91,7 +96,7 @@ export default {
       this.statistic = await response.json();
 
       this.setStatisticChartData(this.statistic, this.range);
-      this.setStatisticChartDataDay(this.statistic, this.date);
+      this.setStatisticChartDataDay(this.statistic, this.date, this.isDateRange);
 
       this.loaded = true;
     },
@@ -103,24 +108,32 @@ export default {
         const videoTitles = timeSlot.video_titles;
         return videoTitles ? videoTitles.length : 0;
       });
-      this.dataLabels = rangedStatistic.map((timeSlot) => moment(timeSlot.date).format('DD-MM-YYYY'));
+      this.dataLabels = rangedStatistic.map((timeSlot) =>
+        range === 'Godzina' ? moment(timeSlot.date).format('MM-DD   HH:mm') : moment(timeSlot.date).format('MM-DD')
+      );
     },
-    setStatisticChartDataDay(statistic, date) {
-      const statisticForDay = this.getStatisticForDate(statistic, date);
+    setStatisticChartDataDay(statistic, date, isDateRange) {
+      const statisticForDay = isDateRange ? this.getStatisticForDate(statistic, date) : statistic;
+      const yearStartDay = moment(`${Number(moment(statistic[0].date).format('YYYY'))}-01-01`);
 
-      this.chartTotalAmountValuesOnDay = statisticForDay.map((timeSlot, idx) => ({
-        x: idx,
-        y: timeSlot.total_sum_amount
-      }));
+      this.chartTotalAmountValuesOnDay = statisticForDay.map((timeSlot) => {
+        const hoursFromStart = moment(timeSlot.date).diff(yearStartDay, 'hours');
+        const currHour = hoursFromStart;
+        return {
+          x: currHour,
+          y: timeSlot.total_sum_amount
+        };
+      });
       this.chartVideoOnDay = statisticForDay.reduce((prevArr, curr) => {
-        const currHour = Number(moment(curr.date).format('HH'));
+        const hoursFromStart = moment(curr.date).diff(yearStartDay, 'hours');
+        const currHour = hoursFromStart;
         if (curr.video_titles) {
           curr.video_titles.forEach((value, idx) =>
             prevArr.push({
               x: currHour,
               y: idx,
               yLabel: value,
-              r: 15,
+              r: isDateRange ? 15 : 5,
               video_title: value,
               video_url: curr.video_urls[idx],
               video_thumbnail: curr.video_thumbnails[idx]
@@ -129,13 +142,18 @@ export default {
         }
         return prevArr;
       }, []);
-      this.dataLabelsOnDay = statisticForDay.map((timeSlot) => moment(timeSlot.date).format('HH:mm'));
+      this.dataLabelsOnDay = statisticForDay.map((timeSlot) =>
+        isDateRange ? moment(timeSlot.date).format('HH:mm') : moment(timeSlot.date).format('MM-DD   HH:mm')
+      );
     },
     onChangeRange(range) {
       this.setStatisticChartData(this.statistic, range);
     },
     onChangeDate(date) {
-      this.setStatisticChartDataDay(this.statistic, date);
+      this.setStatisticChartDataDay(this.statistic, date, this.isDateRange);
+    },
+    onChangeIsDateRange(isDateRange) {
+      this.setStatisticChartDataDay(this.statistic, this.date, isDateRange);
     },
     getRangesStatistic(statistic, range) {
       if (range === 'Godzina') {
@@ -175,13 +193,16 @@ export default {
 <style scoped>
 .wrapper {
   height: 80%;
-  padding: 30px 20px;
+  padding: 40px 20px;
 }
 .section {
-  margin-bottom: 40px;
+  margin-bottom: 60px;
+}
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
 }
 .sectionTitle {
-  margin-bottom: 20px;
-  text-align: center;
+  margin: 10px 0 20px 0;
 }
 </style>

@@ -21,36 +21,61 @@ export default {
     return {
       gradient: null,
       options: {
+        legend: {
+          labels: {
+            fontColor: '#888',
+            filter: function(item) {
+              return !item.text.includes('Filmy na YouTube');
+            }
+          }
+        },
         scales: {
           yAxes: [
             {
               ticks: {
-                beginAtZero: true
+                fontColor: '#888',
+                beginAtZero: true,
+                callback: (value) => {
+                  return this.formatNumber(value);
+                }
               },
               scaleLabel: {
                 display: true,
-                labelString: 'Wideo'
+                labelString: 'Liczba filmów',
+                fontColor: '#888'
               },
               position: 'right'
             },
             {
               id: 'total-amount',
               ticks: {
-                beginAtZero: true
+                fontColor: '#888',
+                beginAtZero: true,
+                callback: (value) => {
+                  return this.formatNumber(value);
+                }
               },
               scaleLabel: {
                 display: true,
-                labelString: 'Kwota'
+                labelString: 'Zebrana kwota',
+                fontColor: '#888'
               }
             }
           ],
           xAxes: [
             {
               ticks: {
-                min: -1,
-                max: 24,
+                fontColor: '#888',
                 stepSize: 1,
-                padding: 20
+                padding: 20,
+                callback: (value, index) => {
+                  return this.chartLabels[index];
+                }
+              },
+              scaleLabel: {
+                display: true,
+                labelString: 'Czas',
+                fontColor: '#888'
               }
             }
           ]
@@ -103,11 +128,11 @@ export default {
             type: 'line',
             yAxisID: 'total-amount',
             label: 'Całkowita zebrana kwota',
-            backgroundColor: '#27272750',
-            borderColor: '#272727',
+            backgroundColor: this.gradient,
+            borderColor: '#707070',
             pointBackgroundColor: 'rgba(0,0,0,0)',
             pointBorderColor: 'rgba(0,0,0,0)',
-            pointHoverBorderColor: '#272727',
+            pointHoverBorderColor: '#505050',
             pointHoverBackgroundColor: '#fff',
             pointHoverRadius: 4,
             pointHitRadius: 10,
@@ -117,13 +142,13 @@ export default {
           },
           {
             type: 'bubble',
-            label: 'Wideo na YouTube',
-            backgroundColor: '#27272750',
+            label: 'Filmy na YouTube',
+            backgroundColor: '#50505050',
             pointStyle: this.chartVideoValues.map((value) => {
               const image = new Image();
               image.src = value.video_thumbnail;
-              image.width = 30;
-              image.height = 30;
+              image.width = value.r * 2;
+              image.height = value.r * 2;
               return image;
             }),
             data: this.chartVideoValues
@@ -138,7 +163,32 @@ export default {
     }
   },
   mounted() {
+    this.gradient = this.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+    this.gradient.addColorStop(0, '#50505070');
+    this.gradient.addColorStop(0.5, '#50505030');
+    this.gradient.addColorStop(1, '#50505000');
+
     this.renderChart(this.dataCollection, this.options);
+  },
+  methods: {
+    formatNumber(num) {
+      let numString = Math.round(num).toString();
+      let numberFormatMapping = [
+        [6, 'm'],
+        [3, 'k']
+      ];
+      for (let [numberOfDigits, replacement] of numberFormatMapping) {
+        if (numString.length > numberOfDigits) {
+          let decimal = '';
+          if (numString[numString.length - numberOfDigits] !== '0') {
+            decimal = '.' + numString[numString.length - numberOfDigits];
+          }
+          numString = numString.substr(0, numString.length - numberOfDigits) + decimal + replacement;
+          break;
+        }
+      }
+      return numString;
+    }
   }
 };
 </script>
