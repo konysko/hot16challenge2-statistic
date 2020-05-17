@@ -1,10 +1,11 @@
 <template>
   <v-app>
-    <v-app-bar app color="#272727" dark>
-      <v-toolbar-title>
+    <div class="header">
+      <h1>
         #hot16challenge2
-      </v-toolbar-title>
-    </v-app-bar>
+      </h1>
+      <span>statystyki</span>
+    </div>
     <v-content>
       <router-view></router-view>
     </v-content>
@@ -22,3 +23,12 @@ export default {
   })
 };
 </script>
+
+<style scoped>
+.header {
+  background: #272727;
+  color: #fff;
+  padding: 80px;
+  text-align: center;
+}
+</style>

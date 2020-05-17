@@ -1,20 +1,51 @@
 <template>
-  <div class="chart">
-    <v-select
-      color="#272727"
-      item-color="#272727"
-      :items="ranges"
-      v-model="range"
-      @change="onChangeRange"
-      label="Range"
-      outlined
-    ></v-select>
-    <line-chart
-      v-if="loaded"
-      :chart-total-amount-values="chartTotalAmountValues"
-      :chart-video-count-values="chartVideoCountValues"
-      :chart-labels="dataLabels"
-    ></line-chart>
+  <div class="wrapper">
+    <section class="section">
+      <h2 class="sectionTitle">Zebrana kwota i liczba filmów</h2>
+      <v-select
+        color="#272727"
+        item-color="#272727"
+        :items="ranges"
+        v-model="range"
+        @change="onChangeRange"
+        label="Zakres wykresu"
+        outlined
+      ></v-select>
+      <line-chart
+        v-if="loaded"
+        :chart-total-amount-values="chartTotalAmountValues"
+        :chart-video-count-values="chartVideoCountValues"
+        :chart-labels="dataLabels"
+      ></line-chart>
+    </section>
+    <section class="section">
+      <h2 class="sectionTitle">Zebrana kwota i poszczególne filmy</h2>
+      <v-menu
+        v-model="dateMenu"
+        :close-on-content-click="false"
+        :nudge-right="40"
+        transition="scale-transition"
+        offset-y
+        min-width="290px"
+      >
+        <template v-slot:activator="{ on }">
+          <v-text-field
+            color="#272727"
+            v-model="date"
+            label="Wykres dla dnia"
+            readonly
+            v-on="on"
+            outlined
+          ></v-text-field>
+        </template>
+        <v-date-picker color="#272727" v-model="date" @change="onChangeDate" @input="dateMenu = false"></v-date-picker>
+      </v-menu>
+      <icon-chart
+        v-if="loaded"
+        :chart-total-amount-values="chartTotalAmountValuesOnDay"
+        :chart-labels="dataLabelsOnDay"
+      ></icon-chart>
+    </section>
   </div>
 </template>
 
@@ -22,21 +53,26 @@
 import moment from 'moment';
 
 import LineChart from '@/components/LineChart.vue';
+import IconChart from '@/components/IconChart.vue';
 
 export default {
   name: 'Home',
   components: {
-    LineChart
+    LineChart,
+    IconChart
   },
   data() {
     return {
+      statistic: null,
       chartTotalAmountValues: null,
       chartVideoCountValues: null,
-      dataLabels: null,
+      chartTotalAmountValuesOnDay: null,
+      dataLabelsOnDay: null,
       loaded: false,
-      ranges: ['Hour', 'Day'],
-      range: 'Day',
-      statistic: null
+      ranges: ['Godzina', 'Dzień'],
+      range: 'Dzień',
+      date: new Date(2019, 4, 9).toISOString().substr(0, 10),
+      dateMenu: false
     };
   },
   mounted() {
@@ -53,6 +89,7 @@ export default {
       this.statistic = await response.json();
 
       this.setStatisticChartData(this.statistic, this.range);
+      this.setStatisticChartDataDay(this.statistic, this.date);
 
       this.loaded = true;
     },
@@ -66,11 +103,23 @@ export default {
       });
       this.dataLabels = rangedStatistic.map((timeSlot) => moment(timeSlot.date).format('DD-MM-YYYY'));
     },
+    setStatisticChartDataDay(statistic, date) {
+      const statisticForDay = this.getStatisticForDate(statistic, date);
+
+      this.chartTotalAmountValuesOnDay = statisticForDay.map((timeSlot) => timeSlot.total_sum_amount);
+      this.dataLabelsOnDay = statisticForDay.map((timeSlot) => moment(timeSlot.date).format('HH:mm'));
+
+      console.log(this.date);
+    },
     onChangeRange(range) {
       this.setStatisticChartData(this.statistic, range);
     },
+    onChangeDate(date) {
+      console.log(date);
+      this.setStatisticChartDataDay(this.statistic, date);
+    },
     getRangesStatistic(statistic, range) {
-      if (range === 'Hour') {
+      if (range === 'Godzina') {
         return statistic;
       } else {
         return statistic.reduce((prev, curr) => {
@@ -88,6 +137,9 @@ export default {
         }, []);
       }
     },
+    getStatisticForDate(statistic, date) {
+      return statistic.filter((item) => moment(item.date).format('YYYY-MM-DD') === date);
+    },
     concatVideoArrays(prev, curr) {
       if (prev) {
         if (curr) {
@@ -102,8 +154,15 @@ export default {
 </script>
 
 <style scoped>
-.chart {
+.wrapper {
   height: 80%;
-  padding: 20px;
+  padding: 30px 20px;
+}
+.section {
+  margin-bottom: 40px;
+}
+.sectionTitle {
+  margin-bottom: 20px;
+  text-align: center;
 }
 </style>
