@@ -43,6 +43,7 @@
       <icon-chart
         v-if="loaded"
         :chart-total-amount-values="chartTotalAmountValuesOnDay"
+        :chart-video-values="chartVideoOnDay"
         :chart-labels="dataLabelsOnDay"
       ></icon-chart>
     </section>
@@ -67,6 +68,7 @@ export default {
       chartTotalAmountValues: null,
       chartVideoCountValues: null,
       chartTotalAmountValuesOnDay: null,
+      chartVideoOnDay: null,
       dataLabelsOnDay: null,
       loaded: false,
       ranges: ['Godzina', 'Dzień'],
@@ -106,16 +108,33 @@ export default {
     setStatisticChartDataDay(statistic, date) {
       const statisticForDay = this.getStatisticForDate(statistic, date);
 
-      this.chartTotalAmountValuesOnDay = statisticForDay.map((timeSlot) => timeSlot.total_sum_amount);
+      this.chartTotalAmountValuesOnDay = statisticForDay.map((timeSlot, idx) => ({
+        x: idx,
+        y: timeSlot.total_sum_amount
+      }));
+      this.chartVideoOnDay = statisticForDay.reduce((prevArr, curr) => {
+        const currHour = Number(moment(curr.date).format('HH'));
+        if (curr.video_titles) {
+          curr.video_titles.forEach((value, idx) =>
+            prevArr.push({
+              x: currHour,
+              y: idx,
+              yLabel: value,
+              r: 15,
+              video_title: value,
+              video_url: curr.video_urls[idx],
+              video_thumbnail: curr.video_thumbnails[idx]
+            })
+          );
+        }
+        return prevArr;
+      }, []);
       this.dataLabelsOnDay = statisticForDay.map((timeSlot) => moment(timeSlot.date).format('HH:mm'));
-
-      console.log(this.date);
     },
     onChangeRange(range) {
       this.setStatisticChartData(this.statistic, range);
     },
     onChangeDate(date) {
-      console.log(date);
       this.setStatisticChartDataDay(this.statistic, date);
     },
     getRangesStatistic(statistic, range) {
