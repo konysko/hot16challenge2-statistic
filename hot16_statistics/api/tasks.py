@@ -4,7 +4,7 @@ from .youtube import YoutubeHandler
 
 
 def fetch_new_payments():
-    last_payment = Payment.objects.order_by('-id').first()
+    last_payment = Payment.objects.order_by('-parsed_date').first()
     if last_payment:
         last_payment_date, last_payment_id = last_payment.date, last_payment.payment_id
     else:

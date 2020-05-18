@@ -58,6 +58,7 @@ class HandlerSiePomaga:
         self.handler = ConnectionSiePomaga()
         self.last_payment_id = last_payment_id
         self.last_payment_date = last_payment_date
+        logger.info(f'Last payment at {last_payment_date}')
         self.payments = []
 
     def run(self):
@@ -97,7 +98,7 @@ class HandlerSiePomaga:
         parsed_id = payment['id'].lstrip('payment-')
         amount = payment.find('strong').text.strip().rstrip(' zł').replace(',', '.').replace(' ', '')
 
-        is_last = bool(parsed_id == self.last_payment_id and parsed_date == self.last_payment_date)
+        is_last = bool(parsed_id == self.last_payment_id)
 
         return Payment(
             payment_id=parsed_id,
